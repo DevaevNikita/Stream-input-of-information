@@ -20,9 +20,9 @@ public class Application {
             future.add(es.submit(new Callable<Boolean>() {
                 @Override
                 public Boolean call() throws Exception {
-                    synchronized (connection) {
+                    //synchronized (connection) {
                         connection.produce();
-                    }
+                    //}
                     return true;
                 }
             }));
@@ -33,10 +33,21 @@ public class Application {
             es.awaitTermination(1, TimeUnit.DAYS);
         } catch (InterruptedException e) {
             e.printStackTrace();
+        }finally {
+            int i = 0;
+            countDownLatch.countDown();
+            for(Future fut : future){
+                Boolean b = (Boolean)fut.get();
+                if(b){
+                    i++;
+                }
+            }
+            if(i == 3) {
+                connection.consumer();
+            }else{
+                System.out.println("Something went wrong");
+            }
         }
-        countDownLatch.countDown();
-        connection.consumer();
-
     }
 }
 
@@ -55,9 +66,19 @@ class Connection{
     }
 
     public void produce(){
-        Scanner scanner = new Scanner(System.in);
-        String str = scanner.nextLine();
-        myString.Append(str);
+        try {
+            semaphore.acquire();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        try {
+            Scanner scanner = new Scanner(System.in);
+            String str = scanner.nextLine();
+            myString.Append(str);
+        }finally {
+            semaphore.release();
+        }
+
     }
 
     public void consumer(){
